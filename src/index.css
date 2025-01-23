@@ -41,9 +41,9 @@
 }
 
 .lottery-grid {
-  @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4;
+  @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 px-4 sm:px-0;
 }
 
 .lottery-section {
-  @apply mb-8;
+  @apply mb-8 max-w-6xl mx-auto;
 }
