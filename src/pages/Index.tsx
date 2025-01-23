@@ -1,25 +1,25 @@
 import LotteryCard from "@/components/LotteryCard";
 
 const NLB_LOTTERIES = [
-  { name: "Mahajana Sampatha", image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e" },
-  { name: "Govisetha", image: "https://images.unsplash.com/photo-1481349518771-20055b2a7b24" },
-  { name: "Mega Power", image: "https://images.unsplash.com/photo-1500673922987-e212871fec22" },
-  { name: "Dhana Nidhanaya", image: "https://images.unsplash.com/photo-1501854140801-50d01698950b" },
-  { name: "Handahana", image: "https://images.unsplash.com/photo-1527576539890-dfa815648363" },
-  { name: "Lucky 7", image: "https://images.unsplash.com/photo-1482881497185-d4a9ddbe4151" },
-  { name: "Ada Sampatha", image: "https://images.unsplash.com/photo-1460574283810-2aab119d8511" },
+  { name: "Mahajana Sampatha", image: "https://r.nlb.lk/resources/112/logo.png" },
+  { name: "Govisetha", image: "https://r.nlb.lk/resources/109/logo.png" },
+  { name: "Mega Power", image: "https://r.nlb.lk/resources/181/logo.png" },
+  { name: "Dhana Nidhanaya", image: "https://r.nlb.lk/resources/260/logo.png" },
+  { name: "Handahana", image: "https://r.nlb.lk/resources/606/logo.png" },
+  { name: "Lucky 7", image: "https://r.nlb.lk/resources/690/logo.png" },
+  { name: "Ada Sampatha", image: "https://r.nlb.lk/resources/724/logo.png" },
   { name: "Development", image: "https://images.unsplash.com/photo-1473177104440-ffee2f376098" },
 ];
 
 const DLB_LOTTERIES = [
-  { name: "Supiri Dhana Sampatha", image: "https://images.unsplash.com/photo-1579547944212-c4f4961a8dd8" },
-  { name: "Kapruka", image: "https://images.unsplash.com/photo-1579547945413-497e1b99dac0" },
-  { name: "Ada Kotipathi", image: "https://images.unsplash.com/photo-1579547945026-69cf480bb0e5" },
-  { name: "Lagna Wasana", image: "https://images.unsplash.com/photo-1579547945641-9dd424c7dbc3" },
-  { name: "Super Ball", image: "https://images.unsplash.com/photo-1579547945652-7c28dbdc8e9d" },
-  { name: "Shanida", image: "https://images.unsplash.com/photo-1579547945675-c9c0a06f8131" },
-  { name: "Jayoda", image: "https://images.unsplash.com/photo-1579547945683-bc2b3f7c8f0e" },
-  { name: "Sasiri", image: "https://images.unsplash.com/photo-1579547945690-9cf0e6e49b1e" },
+  { name: "Supiri Dhana Sampatha", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrhap_QlZ_5czRmd1b1-y0nB48XOALYIShxQ&s" },
+  { name: "Kapruka", image: "https://javalounge.lk/lottery/assets/image/kotipathi-kapruka.jpg" },
+  { name: "Ada Kotipathi", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRR44xCZgNBwI3o3sGsUm_1pSWRXw5Q0uMA5Q&s" },
+  { name: "Lagna Wasana", image: "https://archives1.dailynews.lk/sites/default/files/styles/large/public/news/2018/02/21/z_pviii-DLB.jpg?itok=WOO3hzR5" },
+  { name: "Super Ball", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNodxVU1lIt4X6Qh7Ntw3Ld1U6Q6VY0ZrlKQ&s" },
+  { name: "Shanida", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0caUMfjnS8I1xkJt5l2DOtwL5KNrmfcpnvA&s" },
+  { name: "Jayoda", image: "https://www.dlb.lk/front_img/16989076821-06.jpg" },
+  { name: "Sasiri", image: "https://www.lankayp.com/img/site/lotto/lk2-sasiri.png?v=5" },
 ];
 
 const Index = () => {
@@ -32,7 +32,7 @@ const Index = () => {
             <LotteryCard
               key={lottery.name}
               name={lottery.name}
-              imageUrl={`${lottery.image}?auto=format&fit=crop&w=400&q=80`}
+              imageUrl={lottery.image}
             />
           ))}
         </div>
@@ -45,7 +45,7 @@ const Index = () => {
             <LotteryCard
               key={lottery.name}
               name={lottery.name}
-              imageUrl={`${lottery.image}?auto=format&fit=crop&w=400&q=80`}
+              imageUrl={lottery.image}
             />
           ))}
         </div>
