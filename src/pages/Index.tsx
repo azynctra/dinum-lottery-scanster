@@ -32,6 +32,7 @@ const Index = () => {
               key={lottery.name}
               name={lottery.name}
               imageUrl={lottery.image}
+              type="NLB"
             />
           ))}
         </div>
@@ -45,6 +46,7 @@ const Index = () => {
               key={lottery.name}
               name={lottery.name}
               imageUrl={lottery.image}
+              type="DLB"
             />
           ))}
         </div>
