@@ -8,7 +8,6 @@ const NLB_LOTTERIES = [
   { name: "Handahana", image: "https://r.nlb.lk/resources/606/logo.png" },
   { name: "Lucky 7", image: "https://r.nlb.lk/resources/690/logo.png" },
   { name: "Ada Sampatha", image: "https://r.nlb.lk/resources/724/logo.png" },
-  { name: "Development", image: "https://images.unsplash.com/photo-1473177104440-ffee2f376098" },
 ];
 
 const DLB_LOTTERIES = [
