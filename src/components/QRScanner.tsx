@@ -19,8 +19,15 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
 
     function success(result: string) {
       scanner.clear();
-      setUrl(result);
-      console.log('QR Code scanned:', result);
+      // Extract URL from the scanned result
+      const urlMatch = result.match(/(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        const extractedUrl = urlMatch[0];
+        setUrl(extractedUrl);
+        console.log('Extracted URL:', extractedUrl);
+      } else {
+        console.warn('No URL found in scanned result:', result);
+      }
     }
 
     function error(err: any) {
