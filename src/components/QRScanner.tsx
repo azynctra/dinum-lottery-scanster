@@ -54,13 +54,9 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         {!url ? (
           <div id="reader" className="w-full"></div>
         ) : (
-          <div className="w-full h-[80vh]">
-            <iframe 
-              src={url} 
-              className="w-full h-full border-none"
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-            />
-          </div>
+          <>
+            {window.open(url, "_blank")}
+          </>
         )}
       </div>
     </div>
