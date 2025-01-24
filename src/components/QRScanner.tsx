@@ -54,9 +54,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         {!url ? (
           <div id="reader" className="w-full"></div>
         ) : (
-          <>
-            {window.open(url, "_blank")}
-          </>
+          <iframe src={url} className="w-full h-64"></iframe>
         )}
       </div>
     </div>
