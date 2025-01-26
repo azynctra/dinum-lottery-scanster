@@ -25,6 +25,19 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         const extractedUrl = urlMatch[0];
         setUrl(extractedUrl);
         console.log('Extracted URL:', extractedUrl);
+        // Directly open the URL in a new window with specific features
+        const newWindow = window.open(
+          extractedUrl,
+          '_blank',
+          'noopener,noreferrer,width=800,height=600'
+        );
+        if (newWindow) {
+          newWindow.focus();
+        }
+        // Close the scanner after successful scan
+        setTimeout(() => {
+          onClose();
+        }, 1000);
       } else {
         console.warn('No URL found in scanned result:', result);
       }
@@ -37,7 +50,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
     return () => {
       scanner.clear();
     };
-  }, []);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -50,14 +63,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
             Close
           </button>
         </div>
-        
-        {!url ? (
-          <div id="reader" className="w-full"></div>
-        ) : (
-          <>
-            {window.open(url, "_blank")}
-          </>
-        )}
+        <div id="reader" className="w-full"></div>
       </div>
     </div>
   );
