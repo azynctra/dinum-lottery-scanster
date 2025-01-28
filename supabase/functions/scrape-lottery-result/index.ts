@@ -30,10 +30,8 @@ Deno.serve(async (req) => {
     console.log('Starting crawl for URL:', url);
     const crawlResponse = await firecrawl.crawlUrl(url, {
       limit: 1,
-      scrapeOptions: {
-        selectors: ['.QRR'],
-        formats: ['html']
-      }
+      format: 'html',
+      cssSelector: '.QRR'
     });
 
     console.log('Crawl response:', crawlResponse);
