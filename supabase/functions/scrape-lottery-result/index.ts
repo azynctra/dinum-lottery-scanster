@@ -1,13 +1,11 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import FirecrawlApp from '@mendable/firecrawl-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -15,59 +13,84 @@ serve(async (req) => {
 
   try {
     const { url } = await req.json();
-    console.log('Scraping URL:', url);
+    console.log('Received URL to scrape:', url);
+
+    if (!url) {
+      throw new Error('URL is required');
+    }
 
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    
-    // Make request to Firecrawl API
-    const response = await fetch('https://api.firecrawl.co/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: url,
+    if (!firecrawlApiKey) {
+      throw new Error('Firecrawl API key not configured');
+    }
+
+    console.log('Initializing Firecrawl with API key');
+    const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey });
+
+    console.log('Starting crawl for URL:', url);
+    const crawlResponse = await firecrawl.crawlUrl(url, {
+      limit: 1,
+      scrapeOptions: {
         selectors: ['.QRR'],
-        wait: 2000 // Wait for dynamic content to load
-      }),
+        formats: ['html']
+      }
     });
 
-    const data = await response.json();
-    console.log('Firecrawl response:', data);
+    console.log('Crawl response:', crawlResponse);
 
-    if (!data.success) {
-      throw new Error('Failed to scrape content');
+    if (!crawlResponse.success) {
+      throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
-
-    const content = data.results[0]?.content;
 
     // Store result in database
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { error: insertError } = await supabaseClient
+    const { data: existingResult } = await supabase
       .from('lottery_results')
-      .insert([{ url, content }]);
+      .select()
+      .eq('url', url)
+      .single();
 
-    if (insertError) {
-      console.error('Error inserting result:', insertError);
-      throw new Error('Failed to store result');
+    if (!existingResult) {
+      const { error: insertError } = await supabase
+        .from('lottery_results')
+        .insert([
+          { 
+            url: url,
+            content: crawlResponse.data[0]?.content || ''
+          }
+        ]);
+
+      if (insertError) {
+        console.error('Error inserting result:', insertError);
+      }
     }
 
     return new Response(
-      JSON.stringify({ content }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: true,
+        content: crawlResponse.data[0]?.content || ''
+      }),
+      { 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
     );
+
   } catch (error) {
     console.error('Error in scrape-lottery-result function:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       }
     );
   }

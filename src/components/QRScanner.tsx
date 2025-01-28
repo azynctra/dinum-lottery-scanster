@@ -38,19 +38,30 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         // Start scraping process
         try {
           setIsLoading(true);
-          const { data, error } = await supabase.functions.invoke('scrape-lottery-result', {
+          const response = await supabase.functions.invoke('scrape-lottery-result', {
             body: { url: extractedUrl }
           });
 
-          if (error) throw error;
+          console.log('Scraping response:', response);
 
-          console.log('Scraping result:', data);
-          setScrapedContent(data.content);
+          if (response.error) {
+            throw new Error(response.error.message || 'Failed to fetch lottery result');
+          }
+
+          if (response.data?.success) {
+            setScrapedContent(response.data.content);
+            toast({
+              title: "Success",
+              description: "Lottery result fetched successfully",
+            });
+          } else {
+            throw new Error(response.data?.error || 'Failed to fetch lottery result');
+          }
         } catch (error) {
           console.error('Error scraping content:', error);
           toast({
             title: "Error",
-            description: "Failed to fetch lottery result",
+            description: error.message || "Failed to fetch lottery result",
             variant: "destructive",
           });
         } finally {
@@ -67,7 +78,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
     }
 
     function error(err: any) {
-      console.warn(err);
+      console.warn('QR Scanner error:', err);
     }
 
     return () => {
