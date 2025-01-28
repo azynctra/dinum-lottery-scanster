@@ -29,13 +29,7 @@ Deno.serve(async (req) => {
 
     console.log('Starting crawl for URL:', url);
     const crawlResponse = await firecrawl.crawlUrl(url, {
-      limit: 1,
-      url: url,
-      waitFor: 0,
-      mobile: false,
-      skipTlsVerification: false,
-      timeout: 30000,
-      removeBase64Images: true
+      limit: 1
     });
 
     console.log('Crawl response:', crawlResponse);
