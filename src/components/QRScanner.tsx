@@ -1,13 +1,18 @@
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useEffect, useState } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface QRScannerProps {
   onClose: () => void;
 }
 
 const QRScanner = ({ onClose }: QRScannerProps) => {
+  const { toast } = useToast();
   const [url, setUrl] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(true);
+  const [scrapedContent, setScrapedContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!showScanner) return;
@@ -20,7 +25,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
 
     scanner.render(success, error);
 
-    function success(result: string) {
+    async function success(result: string) {
       scanner.clear();
       // Extract URL from the scanned result
       const urlMatch = result.match(/(https?:\/\/[^\s]+)/);
@@ -29,8 +34,35 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         setUrl(extractedUrl);
         setShowScanner(false);
         console.log('Extracted URL:', extractedUrl);
+        
+        // Start scraping process
+        try {
+          setIsLoading(true);
+          const { data, error } = await supabase.functions.invoke('scrape-lottery-result', {
+            body: { url: extractedUrl }
+          });
+
+          if (error) throw error;
+
+          console.log('Scraping result:', data);
+          setScrapedContent(data.content);
+        } catch (error) {
+          console.error('Error scraping content:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch lottery result",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
       } else {
         console.warn('No URL found in scanned result:', result);
+        toast({
+          title: "Error",
+          description: "No valid URL found in QR code",
+          variant: "destructive",
+        });
       }
     }
 
@@ -46,6 +78,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
   const handleClose = () => {
     setUrl(null);
     setShowScanner(true);
+    setScrapedContent(null);
     onClose();
   };
 
@@ -64,18 +97,24 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         <div className="flex-1 overflow-hidden">
           {showScanner ? (
             <div id="reader" className="w-full"></div>
-          ) : url ? (
-            <div className="w-full h-full">
-              <iframe
-                src={url}
-                className="w-full h-full border-none"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                title="Lottery Result"
-              />
+          ) : (
+            <div className="w-full h-full p-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                </div>
+              ) : scrapedContent ? (
+                <div 
+                  className="prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: scrapedContent }}
+                />
+              ) : (
+                <div className="text-center text-gray-500">
+                  No content available
+                </div>
+              )}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>
