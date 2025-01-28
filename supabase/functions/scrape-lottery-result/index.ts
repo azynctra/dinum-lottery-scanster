@@ -1,4 +1,4 @@
-import FirecrawlApp from '@mendable/firecrawl-js';
+import FirecrawlApp from 'npm:@mendable/firecrawl-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,28 +40,6 @@ Deno.serve(async (req) => {
 
     if (!crawlResponse.success) {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
-    }
-
-    // Store result in database
-    const { data: existingResult } = await supabase
-      .from('lottery_results')
-      .select()
-      .eq('url', url)
-      .single();
-
-    if (!existingResult) {
-      const { error: insertError } = await supabase
-        .from('lottery_results')
-        .insert([
-          { 
-            url: url,
-            content: crawlResponse.data[0]?.content || ''
-          }
-        ]);
-
-      if (insertError) {
-        console.error('Error inserting result:', insertError);
-      }
     }
 
     return new Response(
