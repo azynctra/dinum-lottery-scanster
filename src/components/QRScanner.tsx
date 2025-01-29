@@ -48,7 +48,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
             throw new Error(response.error.message || 'Failed to fetch lottery result');
           }
 
-          if (response.data?.success) {
+          if (response.data?.success && response.data?.content) {
             setScrapedContent(response.data.content);
             toast({
               title: "Success",
@@ -105,7 +105,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
           </button>
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           {showScanner ? (
             <div id="reader" className="w-full"></div>
           ) : (

@@ -38,10 +38,17 @@ Deno.serve(async (req) => {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
+    // Extract the content from the crawl response
+    const content = crawlResponse.data?.[0]?.content;
+    
+    if (!content) {
+      throw new Error('No content found in crawl response');
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        content: crawlResponse.data[0]?.content || ''
+        content: content
       }),
       { 
         headers: { 
