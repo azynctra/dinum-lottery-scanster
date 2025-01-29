@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
     }
 
     // Extract the content from the crawl response
-    const content = crawlResponse.data?.[0]?.content;
+    const content = crawlResponse.data?.[0]?.html || crawlResponse.data?.[0]?.content;
     
     if (!content) {
+      console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
       throw new Error('No content found in crawl response');
     }
 
