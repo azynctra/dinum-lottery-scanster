@@ -1,7 +1,8 @@
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useEffect, useState } from 'react';
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { scrapeLotteryResult } from '@/services/lotteryService';
+import LotteryResult from './LotteryResult';
 
 interface QRScannerProps {
   onClose: () => void;
@@ -27,36 +28,22 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
 
     async function success(result: string) {
       scanner.clear();
-      // Extract URL from the scanned result
       const urlMatch = result.match(/(https?:\/\/[^\s]+)/);
+      
       if (urlMatch) {
         const extractedUrl = urlMatch[0];
         setUrl(extractedUrl);
         setShowScanner(false);
         console.log('Extracted URL:', extractedUrl);
         
-        // Start scraping process
         try {
           setIsLoading(true);
-          const response = await supabase.functions.invoke('scrape-lottery-result', {
-            body: { url: extractedUrl }
+          const content = await scrapeLotteryResult(extractedUrl);
+          setScrapedContent(content);
+          toast({
+            title: "Success",
+            description: "Lottery result fetched successfully",
           });
-
-          console.log('Scraping response:', response);
-
-          if (response.error) {
-            throw new Error(response.error.message || 'Failed to fetch lottery result');
-          }
-
-          if (response.data?.success && response.data?.content) {
-            setScrapedContent(response.data.content);
-            toast({
-              title: "Success",
-              description: "Lottery result fetched successfully",
-            });
-          } else {
-            throw new Error(response.data?.error || 'Failed to fetch lottery result');
-          }
         } catch (error) {
           console.error('Error scraping content:', error);
           toast({
@@ -115,42 +102,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
                 </div>
               ) : scrapedContent ? (
-                <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-                  <div 
-                    className="prose max-w-none space-y-6"
-                    dangerouslySetInnerHTML={{ __html: scrapedContent }}
-                  />
-                  <style>{`
-                    .prose h2 {
-                      color: #ef4444;
-                      font-size: 1.5rem;
-                      margin-top: 2rem;
-                      margin-bottom: 1rem;
-                    }
-                    .prose strong {
-                      color: #1f2937;
-                      font-size: 1.25rem;
-                      display: block;
-                      margin-bottom: 1rem;
-                    }
-                    .prose ol {
-                      list-style-type: decimal;
-                      padding-left: 1.5rem;
-                      margin-bottom: 1.5rem;
-                    }
-                    .prose a {
-                      color: #3b82f6;
-                      text-decoration: none;
-                    }
-                    .prose a:hover {
-                      text-decoration: underline;
-                    }
-                    .prose em {
-                      font-style: italic;
-                      color: #6b7280;
-                    }
-                  `}</style>
-                </div>
+                <LotteryResult content={scrapedContent} />
               ) : (
                 <div className="text-center text-gray-500">
                   No content available
