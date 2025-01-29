@@ -115,10 +115,42 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
                 </div>
               ) : scrapedContent ? (
-                <div 
-                  className="prose max-w-none"
-                  dangerouslySetInnerHTML={{ __html: scrapedContent }}
-                />
+                <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+                  <div 
+                    className="prose max-w-none space-y-6"
+                    dangerouslySetInnerHTML={{ __html: scrapedContent }}
+                  />
+                  <style>{`
+                    .prose h2 {
+                      color: #ef4444;
+                      font-size: 1.5rem;
+                      margin-top: 2rem;
+                      margin-bottom: 1rem;
+                    }
+                    .prose strong {
+                      color: #1f2937;
+                      font-size: 1.25rem;
+                      display: block;
+                      margin-bottom: 1rem;
+                    }
+                    .prose ol {
+                      list-style-type: decimal;
+                      padding-left: 1.5rem;
+                      margin-bottom: 1.5rem;
+                    }
+                    .prose a {
+                      color: #3b82f6;
+                      text-decoration: none;
+                    }
+                    .prose a:hover {
+                      text-decoration: underline;
+                    }
+                    .prose em {
+                      font-style: italic;
+                      color: #6b7280;
+                    }
+                  `}</style>
+                </div>
               ) : (
                 <div className="text-center text-gray-500">
                   No content available
