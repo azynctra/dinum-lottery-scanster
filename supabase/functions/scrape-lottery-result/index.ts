@@ -1,4 +1,5 @@
 import FirecrawlApp from 'npm:@mendable/firecrawl-js';
+import { marked } from 'npm:marked';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,18 +39,21 @@ Deno.serve(async (req) => {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
-    // Extract the content from the crawl response
-    const content = crawlResponse.data?.[0]?.html || crawlResponse.data?.[0]?.content;
+    // Extract the markdown content from the crawl response
+    const markdownContent = crawlResponse.data?.[0]?.markdown;
     
-    if (!content) {
+    if (!markdownContent) {
       console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
       throw new Error('No content found in crawl response');
     }
 
+    // Convert markdown to HTML
+    const htmlContent = marked(markdownContent);
+
     return new Response(
       JSON.stringify({
         success: true,
-        content: content
+        content: htmlContent
       }),
       { 
         headers: { 
