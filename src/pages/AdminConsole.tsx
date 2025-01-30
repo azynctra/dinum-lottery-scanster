@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const LOTTERY_NAMES = [
   "Mahajana Sampatha",
@@ -19,9 +22,40 @@ const LOTTERY_NAMES = [
 ];
 
 const AdminConsole = () => {
-  const handleScrape = (lotteryName: string) => {
-    console.log(`Scraping lottery: ${lotteryName}`);
-    // Scraping functionality will be implemented later
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  const handleScrape = async (lotteryName: string) => {
+    setIsLoading(lotteryName);
+    
+    try {
+      if (lotteryName === "Mega Power") {
+        const { data, error } = await supabase.functions.invoke('scrape-mega-power');
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: data.message,
+        });
+      } else {
+        console.log(`Scraping for ${lotteryName} not implemented yet`);
+        toast({
+          title: "Not Implemented",
+          description: `Scraping for ${lotteryName} will be implemented soon`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Scraping error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to scrape lottery results",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(null);
+    }
   };
 
   return (
@@ -35,7 +69,13 @@ const AdminConsole = () => {
             onClick={() => handleScrape(name)}
           >
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-center">Scrape {name}</h3>
+              <h3 className="text-sm font-medium text-center">
+                {isLoading === name ? (
+                  <span className="text-blue-500">Scraping...</span>
+                ) : (
+                  `Scrape ${name}`
+                )}
+              </h3>
             </CardContent>
           </Card>
         ))}
