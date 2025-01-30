@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const scrapeLotteryResult = async (url: string) => {
   console.log('Scraping lottery result for URL:', url);
   
-  const response = await supabase.functions.invoke('scrape-lottery-result', {
+  // Use our dedicated NLB scraper for NLB URLs
+  const functionName = url.includes('r.nlb.lk') ? 'scrape-nlb-lottery' : 'scrape-lottery-result';
+  
+  const response = await supabase.functions.invoke(functionName, {
     body: { url }
   });
 
