@@ -1,55 +1,37 @@
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import LotteryCard from "@/components/LotteryCard";
 
-const NLB_LOTTERIES = [
-  { name: "Mahajana Sampatha", image: "https://r.nlb.lk/resources/112/logo.png" },
-  { name: "Govisetha", image: "https://r.nlb.lk/resources/109/logo.png" },
-  { name: "Mega Power", image: "https://r.nlb.lk/resources/181/logo.png" },
-  { name: "Dhana Nidhanaya", image: "https://r.nlb.lk/resources/260/logo.png" },
-  { name: "Handahana", image: "https://r.nlb.lk/resources/606/logo.png" },
-  { name: "Lucky 7", image: "https://r.nlb.lk/resources/690/logo.png" },
-  { name: "Ada Sampatha", image: "https://r.nlb.lk/resources/724/logo.png" },
-];
-
-const DLB_LOTTERIES = [
-  { name: "Supiri Dhana Sampatha", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrhap_QlZ_5czRmd1b1-y0nB48XOALYIShxQ&s" },
-  { name: "Kapruka", image: "https://javalounge.lk/lottery/assets/image/kotipathi-kapruka.jpg" },
-  { name: "Ada Kotipathi", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRR44xCZgNBwI3o3sGsUm_1pSWRXw5Q0uMA5Q&s" },
-  { name: "Lagna Wasana", image: "https://archives1.dailynews.lk/sites/default/files/styles/large/public/news/2018/02/21/z_pviii-DLB.jpg?itok=WOO3hzR5" },
-  { name: "Super Ball", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNodxVU1lIt4X6Qh7Ntw3Ld1U6Q6VY0ZrlKQ&s" },
-  { name: "Shanida", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0caUMfjnS8I1xkJt5l2DOtwL5KNrmfcpnvA&s" },
-  { name: "Jayoda", image: "https://www.dlb.lk/front_img/16989076821-06.jpg" },
-  { name: "Sasiri", image: "https://www.lankayp.com/img/site/lotto/lk2-sasiri.png?v=5" },
-];
-
 const Index = () => {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="lottery-section">
-        <h2 className="text-2xl font-bold mb-4">NLB Lotteries</h2>
-        <div className="lottery-grid">
-          {NLB_LOTTERIES.map((lottery) => (
-            <LotteryCard
-              key={lottery.name}
-              name={lottery.name}
-              imageUrl={lottery.image}
-              type="NLB"
-            />
-          ))}
-        </div>
-      </div>
+  const navigate = useNavigate();
 
-      <div className="lottery-section">
-        <h2 className="text-2xl font-bold mb-4">DLB Lotteries</h2>
-        <div className="lottery-grid">
-          {DLB_LOTTERIES.map((lottery) => (
-            <LotteryCard
-              key={lottery.name}
-              name={lottery.name}
-              imageUrl={lottery.image}
-              type="DLB"
-            />
-          ))}
-        </div>
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Lottery Scanner</h1>
+        <Button 
+          onClick={() => navigate("/admin")}
+          variant="outline"
+        >
+          Admin Console
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <LotteryCard name="Mahajana Sampatha" imageUrl="" type="NLB" />
+        <LotteryCard name="Vasana Sampatha" imageUrl="" type="NLB" />
+        <LotteryCard name="Super Ball" imageUrl="" type="NLB" />
+        <LotteryCard name="Mega Power" imageUrl="" type="NLB" />
+        <LotteryCard name="Development Fortune" imageUrl="" type="NLB" />
+        <LotteryCard name="Dhana Nidhanaya" imageUrl="" type="NLB" />
+        <LotteryCard name="Govisetha" imageUrl="" type="NLB" />
+        <LotteryCard name="Jathika Sampatha" imageUrl="" type="NLB" />
+        <LotteryCard name="Saturday Fortune" imageUrl="" type="NLB" />
+        <LotteryCard name="Shanida Wasana" imageUrl="" type="NLB" />
+        <LotteryCard name="Super 50" imageUrl="" type="NLB" />
+        <LotteryCard name="Ada Kotipathi" imageUrl="" type="NLB" />
+        <LotteryCard name="Dhana Rekha" imageUrl="" type="NLB" />
+        <LotteryCard name="Dollar Fortune" imageUrl="" type="NLB" />
+        <LotteryCard name="Kotipathi Kapruka" imageUrl="" type="NLB" />
       </div>
     </div>
   );
