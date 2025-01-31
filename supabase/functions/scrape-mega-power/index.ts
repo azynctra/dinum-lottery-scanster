@@ -42,7 +42,6 @@ Deno.serve(async (req) => {
   try {
     console.log('Starting to scrape Mega Power results...');
     
-    // Fetch the lottery results page with proper headers
     const response = await fetch('https://www.nlb.lk/results/mega-power', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -61,20 +60,24 @@ Deno.serve(async (req) => {
     const $ = cheerio.load(html);
     const results: DrawResult[] = [];
 
+    // Find the table containing lottery results
+    const table = $('table.table-bordered');
+    console.log('Found table:', table.length > 0);
+
     // Process each result row
-    $('tr').each((_, row) => {
+    table.find('tr').each((_, row) => {
       try {
         const $row = $(row);
         const drawNumberEl = $row.find('td:first-child b');
         
         if (!drawNumberEl.length) {
-          return; // Skip rows without draw numbers
+          return; // Skip header rows
         }
 
         const drawNumber = drawNumberEl.text().trim();
         console.log(`Processing draw number: ${drawNumber}`);
         
-        // Extract date from the text after the draw number
+        // Extract date
         const dateText = $row.find('td:first-child').contents().filter(function() {
           return this.nodeType === 3;
         }).text().trim();
@@ -85,7 +88,12 @@ Deno.serve(async (req) => {
         }
 
         // Parse the date correctly
-        const drawDate = new Date(dateText).toISOString().split('T')[0];
+        const dateParts = dateText.split(' ');
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const month = monthNames.indexOf(dateParts[1]) + 1;
+        const day = parseInt(dateParts[2]);
+        const year = parseInt(dateParts[3]);
+        const drawDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         console.log(`Draw date parsed: ${drawDate}`);
 
         // Extract main lottery numbers
