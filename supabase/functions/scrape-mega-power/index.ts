@@ -42,8 +42,15 @@ Deno.serve(async (req) => {
   try {
     console.log('Starting to scrape Mega Power results...');
     
-    // Fetch the lottery results page
-    const response = await fetch('https://www.nlb.lk/results/mega-power');
+    // Fetch the lottery results page with proper headers
+    const response = await fetch('https://www.nlb.lk/results/mega-power', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      }
+    });
+
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
     }
@@ -67,16 +74,18 @@ Deno.serve(async (req) => {
         const drawNumber = drawNumberEl.text().trim();
         console.log(`Processing draw number: ${drawNumber}`);
         
-        const drawDateText = $row.find('td:first-child').contents().filter(function() {
+        // Extract date from the text after the draw number
+        const dateText = $row.find('td:first-child').contents().filter(function() {
           return this.nodeType === 3;
         }).text().trim();
         
-        if (!drawDateText) {
+        if (!dateText) {
           console.log(`No date found for draw ${drawNumber}`);
           return;
         }
-        
-        const drawDate = new Date(drawDateText).toISOString().split('T')[0];
+
+        // Parse the date correctly
+        const drawDate = new Date(dateText).toISOString().split('T')[0];
         console.log(`Draw date parsed: ${drawDate}`);
 
         // Extract main lottery numbers
