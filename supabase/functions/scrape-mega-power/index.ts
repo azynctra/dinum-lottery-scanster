@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
     });
 
@@ -60,51 +62,40 @@ Deno.serve(async (req) => {
     const $ = cheerio.load(html);
     const results: DrawResult[] = [];
 
-    // Find the table containing lottery results
-    const table = $('table.table-bordered');
-    console.log('Found table:', table.length > 0);
+    // Find all result containers
+    const resultRows = $('.result-container');
+    console.log('Found result containers:', resultRows.length);
 
-    // Process each result row
-    table.find('tr').each((_, row) => {
+    // Process each result container
+    resultRows.each((_, container) => {
       try {
-        const $row = $(row);
-        const drawNumberEl = $row.find('td:first-child b');
+        const $container = $(container);
         
-        if (!drawNumberEl.length) {
-          return; // Skip header rows
-        }
-
-        const drawNumber = drawNumberEl.text().trim();
-        console.log(`Processing draw number: ${drawNumber}`);
+        // Extract draw number and date
+        const drawInfo = $container.find('.draw-info').text().trim();
+        const drawMatch = drawInfo.match(/Draw No:\s*(\d+)/);
+        const dateMatch = drawInfo.match(/Draw Date:\s*(\d{2}\/\d{2}\/\d{4})/);
         
-        // Extract date
-        const dateText = $row.find('td:first-child').contents().filter(function() {
-          return this.nodeType === 3;
-        }).text().trim();
-        
-        if (!dateText) {
-          console.log(`No date found for draw ${drawNumber}`);
+        if (!drawMatch || !dateMatch) {
+          console.log('Could not find draw number or date');
           return;
         }
 
-        // Parse the date correctly
-        const dateParts = dateText.split(' ');
-        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const month = monthNames.indexOf(dateParts[1]) + 1;
-        const day = parseInt(dateParts[2]);
-        const year = parseInt(dateParts[3]);
-        const drawDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        console.log(`Draw date parsed: ${drawDate}`);
+        const drawNumber = drawMatch[1];
+        const dateParts = dateMatch[1].split('/');
+        const drawDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+        
+        console.log(`Processing draw ${drawNumber} from ${drawDate}`);
 
-        // Extract main lottery numbers
+        // Extract main numbers
         const mainNumbers: LotteryNumbers = {
           letter: '',
           superNumber: '',
-          numbers: [],
+          numbers: []
         };
 
-        const $mainOl = $row.find('ol.B').first();
-        $mainOl.find('li').each((i, el) => {
+        const numberElements = $container.find('.lottery-number');
+        numberElements.each((i, el) => {
           const value = $(el).text().trim();
           if (i === 0) mainNumbers.letter = value;
           else if (i === 1) mainNumbers.superNumber = value;
@@ -119,44 +110,48 @@ Deno.serve(async (req) => {
           mainNumbers,
         };
 
-        // Check for Lakshapathi numbers
-        const $lakshapathiSpan = $row.find('span:contains("Lakshapathi Double Chance No")');
-        if ($lakshapathiSpan.length) {
-          format = 'old';
-          const lakshapathiNumbers: string[] = [];
-          $lakshapathiSpan.next('ol.B').find('li').each((_, el) => {
-            lakshapathiNumbers.push($(el).text().trim());
-          });
-          result.lakshapathiNumbers = { numbers: lakshapathiNumbers };
-        }
-
-        // Check for Millionaire numbers
-        const $millionaireSpan = $row.find('span:contains("Millionaire Lucky Number")');
-        if ($millionaireSpan.length) {
+        // Check for additional prize numbers
+        const bonusSection = $container.find('.bonus-numbers');
+        
+        if (bonusSection.length) {
           format = 'special';
-          const millionaireNumbers: string[] = [];
-          $millionaireSpan.next('ol.B').find('li').each((_, el) => {
-            millionaireNumbers.push($(el).text().trim());
-          });
-          result.millionaireNumbers = { numbers: millionaireNumbers };
-        }
+          
+          // Extract Lakshapathi numbers
+          const lakshapathiDiv = bonusSection.find('.lakshapathi');
+          if (lakshapathiDiv.length) {
+            const lakshapathiNumbers: string[] = [];
+            lakshapathiDiv.find('.number').each((_, el) => {
+              lakshapathiNumbers.push($(el).text().trim());
+            });
+            result.lakshapathiNumbers = { numbers: lakshapathiNumbers };
+          }
 
-        // Check for 500k numbers
-        const $fiveHundredKSpan = $row.find('span:contains("500,000/= Lucky Number")');
-        if ($fiveHundredKSpan.length) {
-          format = 'special';
-          const fiveHundredKNumbers: string[] = [];
-          $fiveHundredKSpan.next('ol.B').find('li').each((_, el) => {
-            fiveHundredKNumbers.push($(el).text().trim());
-          });
-          result.fiveHundredKNumbers = { numbers: fiveHundredKNumbers };
+          // Extract Millionaire numbers
+          const millionaireDiv = bonusSection.find('.millionaire');
+          if (millionaireDiv.length) {
+            const millionaireNumbers: string[] = [];
+            millionaireDiv.find('.number').each((_, el) => {
+              millionaireNumbers.push($(el).text().trim());
+            });
+            result.millionaireNumbers = { numbers: millionaireNumbers };
+          }
+
+          // Extract 500K numbers
+          const fiveHundredKDiv = bonusSection.find('.five-hundred-k');
+          if (fiveHundredKDiv.length) {
+            const fiveHundredKNumbers: string[] = [];
+            fiveHundredKDiv.find('.number').each((_, el) => {
+              fiveHundredKNumbers.push($(el).text().trim());
+            });
+            result.fiveHundredKNumbers = { numbers: fiveHundredKNumbers };
+          }
         }
 
         result.format = format;
         results.push(result);
         console.log(`Successfully processed draw ${drawNumber}`);
       } catch (error) {
-        console.error('Error processing row:', error);
+        console.error('Error processing container:', error);
       }
     });
 
