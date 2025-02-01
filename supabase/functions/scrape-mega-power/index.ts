@@ -40,7 +40,6 @@ Deno.serve(async (req) => {
       limit: 1,
       scrapeOptions: {
         formats: ['html'],
-        waitForNetworkIdle: true,
         timeout: 30000
       }
     });
@@ -59,11 +58,14 @@ Deno.serve(async (req) => {
     console.log('Successfully retrieved HTML. Loading with Cheerio...');
     const $ = cheerio.load(html);
     
+    // Log the full HTML for debugging
+    console.log('Full HTML content:', html);
+    
     // Log all table elements for debugging
     console.log('Found tables on page:', $('table').length);
     
     // Try multiple selector patterns
-    const tables = $('table, .table, .table-responsive table');
+    const tables = $('.table-responsive table, table.table');
     console.log('Found tables with broader selector:', tables.length);
     
     const results: DrawResult[] = [];
@@ -111,7 +113,7 @@ Deno.serve(async (req) => {
               cells.eq(4).text().trim(),
               cells.eq(5).text().trim(),
               cells.eq(6).text().trim(),
-            ].filter(Boolean) // Remove empty strings
+            ].filter(Boolean)
           };
 
           console.log('Extracted result:', {
@@ -133,16 +135,6 @@ Deno.serve(async (req) => {
     });
 
     console.log(`Found ${results.length} results to process`);
-
-    if (results.length === 0) {
-      // Log the full HTML for debugging when no results are found
-      console.log('Full HTML content:', html);
-      console.log('Page structure:', {
-        tables: $('table').length,
-        divs: $('div').length,
-        tableRows: $('tr').length
-      });
-    }
 
     // Initialize Supabase client
     const supabaseClient = createClient(
