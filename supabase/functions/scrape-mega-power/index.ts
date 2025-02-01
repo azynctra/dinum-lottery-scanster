@@ -56,11 +56,12 @@ Deno.serve(async (req) => {
       limit: 1,
       scrapeOptions: {
         formats: ['html'],
-        waitForSelector: '.lottery-results-container' // Wait for this selector to be present
+        // Removed waitForSelector as it's not supported
       }
     });
 
     if (!crawlResponse.success) {
+      console.error('Crawl response error:', crawlResponse);
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
     console.log('Full HTML content:', html);
     
     // Try different selectors that might contain the results
-    const resultContainers = $('.lottery-results-container, .result-container, .lottery-result');
+    const resultContainers = $('.lottery-results-container, .result-container, .lottery-result, table.results-table tr');
     console.log('Found result containers:', resultContainers.length);
     
     // Log the HTML structure of each container
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
         console.log('Processing container:', $container.html());
         
         // Extract draw number and date - try multiple possible selectors
-        const drawInfo = $container.find('.draw-info, .draw-details, .draw-number').text().trim();
+        const drawInfo = $container.find('.draw-info, .draw-details, .draw-number, td:first-child').text().trim();
         console.log('Draw info found:', drawInfo);
         
         const drawMatch = drawInfo.match(/Draw No:?\s*(\d+)/i) || drawInfo.match(/(\d+)/);
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
         };
 
         // Try multiple possible selectors for lottery numbers
-        const numberElements = $container.find('.lottery-number, .number, .result-number');
+        const numberElements = $container.find('.lottery-number, .number, .result-number, td:not(:first-child)');
         console.log('Found number elements:', numberElements.length);
         
         numberElements.each((i, el) => {
