@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
     const crawlResponse = await firecrawl.crawlUrl('https://www.nlb.lk/results/mega-power', {
       limit: 1,
       scrapeOptions: {
-        formats: ['html']
+        formats: ['html'],
+        waitForSelector: '.lottery-results-container' // Wait for this selector to be present
       }
     });
 
@@ -71,24 +72,41 @@ Deno.serve(async (req) => {
 
     console.log('Successfully retrieved HTML content, parsing results...');
     const $ = cheerio.load(html);
+    
+    // Log the full HTML for debugging
+    console.log('Full HTML content:', html);
+    
+    // Try different selectors that might contain the results
+    const resultContainers = $('.lottery-results-container, .result-container, .lottery-result');
+    console.log('Found result containers:', resultContainers.length);
+    
+    // Log the HTML structure of each container
+    resultContainers.each((i, container) => {
+      console.log(`Container ${i} HTML:`, $(container).html());
+    });
+
     const results: DrawResult[] = [];
 
-    // Find all result containers
-    const resultRows = $('.result-container');
-    console.log('Found result containers:', resultRows.length);
-
     // Process each result container
-    resultRows.each((_, container) => {
+    resultContainers.each((_, container) => {
       try {
         const $container = $(container);
         
-        // Extract draw number and date
-        const drawInfo = $container.find('.draw-info').text().trim();
-        const drawMatch = drawInfo.match(/Draw No:\s*(\d+)/);
-        const dateMatch = drawInfo.match(/Draw Date:\s*(\d{2}\/\d{2}\/\d{4})/);
+        // Log the structure we're trying to parse
+        console.log('Processing container:', $container.html());
         
+        // Extract draw number and date - try multiple possible selectors
+        const drawInfo = $container.find('.draw-info, .draw-details, .draw-number').text().trim();
+        console.log('Draw info found:', drawInfo);
+        
+        const drawMatch = drawInfo.match(/Draw No:?\s*(\d+)/i) || drawInfo.match(/(\d+)/);
+        const dateMatch = drawInfo.match(/Draw Date:?\s*(\d{2}\/\d{2}\/\d{4})/i) || 
+                         drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
+        
+        console.log('Draw matches:', { drawMatch, dateMatch });
+
         if (!drawMatch || !dateMatch) {
-          console.log('Could not find draw number or date');
+          console.log('Could not find draw number or date in:', drawInfo);
           return;
         }
 
@@ -98,20 +116,26 @@ Deno.serve(async (req) => {
         
         console.log(`Processing draw ${drawNumber} from ${drawDate}`);
 
-        // Extract main numbers
+        // Extract main numbers with detailed logging
         const mainNumbers: LotteryNumbers = {
           letter: '',
           superNumber: '',
           numbers: []
         };
 
-        const numberElements = $container.find('.lottery-number');
+        // Try multiple possible selectors for lottery numbers
+        const numberElements = $container.find('.lottery-number, .number, .result-number');
+        console.log('Found number elements:', numberElements.length);
+        
         numberElements.each((i, el) => {
           const value = $(el).text().trim();
+          console.log(`Number element ${i}:`, value);
           if (i === 0) mainNumbers.letter = value;
           else if (i === 1) mainNumbers.superNumber = value;
           else mainNumbers.numbers.push(value);
         });
+
+        console.log('Extracted main numbers:', mainNumbers);
 
         let format: 'new' | 'old' | 'special' = 'new';
         const result: DrawResult = {
@@ -158,7 +182,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        result.format = format;
         results.push(result);
         console.log(`Successfully processed draw ${drawNumber}`);
       } catch (error) {
