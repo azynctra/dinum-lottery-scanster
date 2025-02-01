@@ -26,116 +26,123 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Starting to scrape Mega Power results using Firecrawl...');
+    console.log('Starting to scrape Mega Power results...');
     
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
     if (!firecrawlApiKey) {
       throw new Error('Firecrawl API key not configured');
     }
 
-    console.log('Initializing Firecrawl with API key');
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey });
-
-    console.log('Starting crawl for NLB Mega Power URL');
+    
+    console.log('Initialized Firecrawl, starting crawl...');
     const crawlResponse = await firecrawl.crawlUrl('https://www.nlb.lk/results/mega-power', {
       limit: 1,
       scrapeOptions: {
         formats: ['html'],
+        waitForNetworkIdle: true,
+        timeout: 30000
       }
     });
 
     if (!crawlResponse.success) {
-      console.error('Crawl response error:', crawlResponse);
+      console.error('Crawl failed:', crawlResponse);
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
     const html = crawlResponse.data?.[0]?.html;
     if (!html) {
-      console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
+      console.error('No HTML content found:', crawlResponse);
       throw new Error('No HTML content found in crawl response');
     }
 
-    console.log('Successfully retrieved HTML content, parsing results...');
+    console.log('Successfully retrieved HTML. Loading with Cheerio...');
     const $ = cheerio.load(html);
     
-    // Log the full HTML for debugging
-    console.log('Full HTML content:', html);
+    // Log all table elements for debugging
+    console.log('Found tables on page:', $('table').length);
     
-    // Find the results table - be more specific with the selector
-    const resultTable = $('.result-table, .table-responsive table, table');
-    console.log('Found result table:', resultTable.length > 0);
-    
-    if (resultTable.length === 0) {
-      console.log('Available tables on the page:');
-      $('table').each((i, table) => {
-        console.log(`Table ${i + 1} classes:`, $(table).attr('class'));
-        console.log(`Table ${i + 1} HTML:`, $(table).html());
-      });
-    }
+    // Try multiple selector patterns
+    const tables = $('table, .table, .table-responsive table');
+    console.log('Found tables with broader selector:', tables.length);
     
     const results: DrawResult[] = [];
 
-    // Process each row in the table
-    resultTable.find('tr').each((index, row) => {
-      try {
-        const $row = $(row);
-        console.log(`Processing row ${index}:`, $row.html());
-        
-        const cells = $row.find('td');
-        if (cells.length < 7) {
-          console.log(`Skipping row ${index} - insufficient cells:`, cells.length);
-          return;
+    tables.each((tableIndex, table) => {
+      console.log(`Processing table ${tableIndex + 1}`);
+      
+      $(table).find('tr').each((rowIndex, row) => {
+        try {
+          const $row = $(row);
+          const cells = $row.find('td');
+          
+          console.log(`Row ${rowIndex + 1} has ${cells.length} cells`);
+          if (cells.length < 4) {
+            console.log(`Skipping row ${rowIndex + 1} - insufficient cells`);
+            return;
+          }
+
+          // Log the content of each cell
+          cells.each((i, cell) => {
+            console.log(`Cell ${i + 1} content:`, $(cell).text().trim());
+          });
+
+          const drawInfo = cells.eq(0).text().trim();
+          console.log('Draw info:', drawInfo);
+
+          // Extract draw number and date
+          const drawMatch = drawInfo.match(/(\d+)/);
+          const dateMatch = drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
+
+          if (!drawMatch || !dateMatch) {
+            console.log('Could not extract draw number or date from:', drawInfo);
+            return;
+          }
+
+          const drawNumber = drawMatch[1];
+          const dateParts = dateMatch[1].split('/');
+          const drawDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+
+          const mainNumbers: LotteryNumbers = {
+            letter: cells.eq(1).text().trim(),
+            superNumber: cells.eq(2).text().trim(),
+            numbers: [
+              cells.eq(3).text().trim(),
+              cells.eq(4).text().trim(),
+              cells.eq(5).text().trim(),
+              cells.eq(6).text().trim(),
+            ].filter(Boolean) // Remove empty strings
+          };
+
+          console.log('Extracted result:', {
+            drawNumber,
+            drawDate,
+            mainNumbers
+          });
+
+          results.push({
+            drawNumber,
+            drawDate,
+            format: 'new',
+            mainNumbers,
+          });
+        } catch (error) {
+          console.error('Error processing row:', error);
         }
-        
-        // Extract and log each cell's content
-        cells.each((i, cell) => {
-          console.log(`Cell ${i} content:`, $(cell).text().trim());
-        });
-        
-        const drawInfo = cells.eq(0).text().trim();
-        console.log('Draw info:', drawInfo);
-        
-        const drawMatch = drawInfo.match(/(\d+)/);
-        const dateMatch = drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
-        
-        if (!drawMatch || !dateMatch) {
-          console.log('Could not extract draw number or date from:', drawInfo);
-          return;
-        }
-
-        const drawNumber = drawMatch[1];
-        const dateParts = dateMatch[1].split('/');
-        const drawDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-        
-        console.log(`Found draw ${drawNumber} from ${drawDate}`);
-
-        const mainNumbers: LotteryNumbers = {
-          letter: cells.eq(1).text().trim(),
-          superNumber: cells.eq(2).text().trim(),
-          numbers: [
-            cells.eq(3).text().trim(),
-            cells.eq(4).text().trim(),
-            cells.eq(5).text().trim(),
-            cells.eq(6).text().trim(),
-          ]
-        };
-
-        console.log('Extracted numbers:', mainNumbers);
-
-        results.push({
-          drawNumber,
-          drawDate,
-          format: 'new',
-          mainNumbers,
-        });
-        
-        console.log(`Successfully processed draw ${drawNumber}`);
-      } catch (error) {
-        console.error('Error processing row:', error);
-      }
+      });
     });
 
     console.log(`Found ${results.length} results to process`);
+
+    if (results.length === 0) {
+      // Log the full HTML for debugging when no results are found
+      console.log('Full HTML content:', html);
+      console.log('Page structure:', {
+        tables: $('table').length,
+        divs: $('div').length,
+        tableRows: $('tr').length
+      });
+    }
 
     // Initialize Supabase client
     const supabaseClient = createClient(
