@@ -13,26 +13,11 @@ interface LotteryNumbers {
   numbers: string[];
 }
 
-interface LakshapathiNumbers {
-  numbers: string[];
-}
-
-interface MillionaireNumbers {
-  numbers: string[];
-}
-
-interface FiveHundredKNumbers {
-  numbers: string[];
-}
-
 interface DrawResult {
   drawNumber: string;
   drawDate: string;
   format: 'new' | 'old' | 'special';
   mainNumbers: LotteryNumbers;
-  lakshapathiNumbers?: LakshapathiNumbers;
-  millionaireNumbers?: MillionaireNumbers;
-  fiveHundredKNumbers?: FiveHundredKNumbers;
 }
 
 Deno.serve(async (req) => {
@@ -76,26 +61,37 @@ Deno.serve(async (req) => {
     // Log the full HTML for debugging
     console.log('Full HTML content:', html);
     
-    // Updated selectors to match NLB website structure
-    const resultTable = $('.table-responsive table');
+    // Find the results table - be more specific with the selector
+    const resultTable = $('.result-table, .table-responsive table, table');
     console.log('Found result table:', resultTable.length > 0);
+    
+    if (resultTable.length === 0) {
+      console.log('Available tables on the page:');
+      $('table').each((i, table) => {
+        console.log(`Table ${i + 1} classes:`, $(table).attr('class'));
+        console.log(`Table ${i + 1} HTML:`, $(table).html());
+      });
+    }
     
     const results: DrawResult[] = [];
 
     // Process each row in the table
-    resultTable.find('tr').each((_, row) => {
+    resultTable.find('tr').each((index, row) => {
       try {
         const $row = $(row);
-        const cells = $row.find('td');
+        console.log(`Processing row ${index}:`, $row.html());
         
-        // Skip header row or invalid rows
+        const cells = $row.find('td');
         if (cells.length < 7) {
+          console.log(`Skipping row ${index} - insufficient cells:`, cells.length);
           return;
         }
         
-        console.log('Processing row:', $row.html());
+        // Extract and log each cell's content
+        cells.each((i, cell) => {
+          console.log(`Cell ${i} content:`, $(cell).text().trim());
+        });
         
-        // Extract draw information from the first cell
         const drawInfo = cells.eq(0).text().trim();
         console.log('Draw info:', drawInfo);
         
@@ -103,7 +99,7 @@ Deno.serve(async (req) => {
         const dateMatch = drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
         
         if (!drawMatch || !dateMatch) {
-          console.log('Could not find draw number or date in:', drawInfo);
+          console.log('Could not extract draw number or date from:', drawInfo);
           return;
         }
 
@@ -111,9 +107,8 @@ Deno.serve(async (req) => {
         const dateParts = dateMatch[1].split('/');
         const drawDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
         
-        console.log(`Processing draw ${drawNumber} from ${drawDate}`);
+        console.log(`Found draw ${drawNumber} from ${drawDate}`);
 
-        // Extract lottery numbers
         const mainNumbers: LotteryNumbers = {
           letter: cells.eq(1).text().trim(),
           superNumber: cells.eq(2).text().trim(),
@@ -127,14 +122,13 @@ Deno.serve(async (req) => {
 
         console.log('Extracted numbers:', mainNumbers);
 
-        const result: DrawResult = {
+        results.push({
           drawNumber,
           drawDate,
           format: 'new',
           mainNumbers,
-        };
-
-        results.push(result);
+        });
+        
         console.log(`Successfully processed draw ${drawNumber}`);
       } catch (error) {
         console.error('Error processing row:', error);
@@ -154,8 +148,7 @@ Deno.serve(async (req) => {
       try {
         console.log(`Storing result for draw ${result.drawNumber}`);
         
-        // Insert main result
-        const { data: mainResult, error: mainError } = await supabaseClient
+        const { error: mainError } = await supabaseClient
           .from('mega_power_results')
           .upsert({
             draw_number: result.drawNumber,
@@ -169,79 +162,14 @@ Deno.serve(async (req) => {
             format: result.format
           }, {
             onConflict: 'draw_number'
-          })
-          .select()
-          .single();
+          });
 
         if (mainError) {
           console.error('Error storing main result:', mainError);
           throw mainError;
         }
 
-        console.log(`Stored main result for draw ${result.drawNumber}`);
-
-        // Insert Lakshapathi numbers if present
-        if (result.lakshapathiNumbers) {
-          const { error: lakshapathiError } = await supabaseClient
-            .from('mega_power_lakshapathi')
-            .upsert({
-              draw_id: mainResult.id,
-              number1: result.lakshapathiNumbers.numbers[0],
-              number2: result.lakshapathiNumbers.numbers[1],
-              number3: result.lakshapathiNumbers.numbers[2],
-              number4: result.lakshapathiNumbers.numbers[3],
-              number5: result.lakshapathiNumbers.numbers[4],
-              number6: result.lakshapathiNumbers.numbers[5]
-            }, {
-              onConflict: 'draw_id'
-            });
-
-          if (lakshapathiError) {
-            console.error('Error storing lakshapathi numbers:', lakshapathiError);
-          }
-        }
-
-        // Insert Millionaire numbers if present
-        if (result.millionaireNumbers) {
-          const { error: millionaireError } = await supabaseClient
-            .from('mega_power_millionaire')
-            .upsert({
-              draw_id: mainResult.id,
-              number1: result.millionaireNumbers.numbers[0],
-              number2: result.millionaireNumbers.numbers[1],
-              number3: result.millionaireNumbers.numbers[2],
-              number4: result.millionaireNumbers.numbers[3],
-              number5: result.millionaireNumbers.numbers[4],
-              number6: result.millionaireNumbers.numbers[5]
-            }, {
-              onConflict: 'draw_id'
-            });
-
-          if (millionaireError) {
-            console.error('Error storing millionaire numbers:', millionaireError);
-          }
-        }
-
-        // Insert 500k numbers if present
-        if (result.fiveHundredKNumbers) {
-          const { error: fiveHundredKError } = await supabaseClient
-            .from('mega_power_500k')
-            .upsert({
-              draw_id: mainResult.id,
-              number1: result.fiveHundredKNumbers.numbers[0],
-              number2: result.fiveHundredKNumbers.numbers[1],
-              number3: result.fiveHundredKNumbers.numbers[2],
-              number4: result.fiveHundredKNumbers.numbers[3],
-              number5: result.fiveHundredKNumbers.numbers[4],
-              number6: result.fiveHundredKNumbers.numbers[5]
-            }, {
-              onConflict: 'draw_id'
-            });
-
-          if (fiveHundredKError) {
-            console.error('Error storing 500k numbers:', fiveHundredKError);
-          }
-        }
+        console.log(`Successfully stored result for draw ${result.drawNumber}`);
       } catch (error) {
         console.error(`Error processing draw ${result.drawNumber}:`, error);
       }
