@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
       limit: 1,
       scrapeOptions: {
         formats: ['html'],
-        // Removed waitForSelector as it's not supported
       }
     });
 
@@ -77,35 +76,32 @@ Deno.serve(async (req) => {
     // Log the full HTML for debugging
     console.log('Full HTML content:', html);
     
-    // Try different selectors that might contain the results
-    const resultContainers = $('.lottery-results-container, .result-container, .lottery-result, table.results-table tr');
-    console.log('Found result containers:', resultContainers.length);
+    // Updated selectors to match NLB website structure
+    const resultTable = $('.table-responsive table');
+    console.log('Found result table:', resultTable.length > 0);
     
-    // Log the HTML structure of each container
-    resultContainers.each((i, container) => {
-      console.log(`Container ${i} HTML:`, $(container).html());
-    });
-
     const results: DrawResult[] = [];
 
-    // Process each result container
-    resultContainers.each((_, container) => {
+    // Process each row in the table
+    resultTable.find('tr').each((_, row) => {
       try {
-        const $container = $(container);
+        const $row = $(row);
+        const cells = $row.find('td');
         
-        // Log the structure we're trying to parse
-        console.log('Processing container:', $container.html());
+        // Skip header row or invalid rows
+        if (cells.length < 7) {
+          return;
+        }
         
-        // Extract draw number and date - try multiple possible selectors
-        const drawInfo = $container.find('.draw-info, .draw-details, .draw-number, td:first-child').text().trim();
-        console.log('Draw info found:', drawInfo);
+        console.log('Processing row:', $row.html());
         
-        const drawMatch = drawInfo.match(/Draw No:?\s*(\d+)/i) || drawInfo.match(/(\d+)/);
-        const dateMatch = drawInfo.match(/Draw Date:?\s*(\d{2}\/\d{2}\/\d{4})/i) || 
-                         drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
+        // Extract draw information from the first cell
+        const drawInfo = cells.eq(0).text().trim();
+        console.log('Draw info:', drawInfo);
         
-        console.log('Draw matches:', { drawMatch, dateMatch });
-
+        const drawMatch = drawInfo.match(/(\d+)/);
+        const dateMatch = drawInfo.match(/(\d{2}\/\d{2}\/\d{4})/);
+        
         if (!drawMatch || !dateMatch) {
           console.log('Could not find draw number or date in:', drawInfo);
           return;
@@ -117,76 +113,31 @@ Deno.serve(async (req) => {
         
         console.log(`Processing draw ${drawNumber} from ${drawDate}`);
 
-        // Extract main numbers with detailed logging
+        // Extract lottery numbers
         const mainNumbers: LotteryNumbers = {
-          letter: '',
-          superNumber: '',
-          numbers: []
+          letter: cells.eq(1).text().trim(),
+          superNumber: cells.eq(2).text().trim(),
+          numbers: [
+            cells.eq(3).text().trim(),
+            cells.eq(4).text().trim(),
+            cells.eq(5).text().trim(),
+            cells.eq(6).text().trim(),
+          ]
         };
 
-        // Try multiple possible selectors for lottery numbers
-        const numberElements = $container.find('.lottery-number, .number, .result-number, td:not(:first-child)');
-        console.log('Found number elements:', numberElements.length);
-        
-        numberElements.each((i, el) => {
-          const value = $(el).text().trim();
-          console.log(`Number element ${i}:`, value);
-          if (i === 0) mainNumbers.letter = value;
-          else if (i === 1) mainNumbers.superNumber = value;
-          else mainNumbers.numbers.push(value);
-        });
+        console.log('Extracted numbers:', mainNumbers);
 
-        console.log('Extracted main numbers:', mainNumbers);
-
-        let format: 'new' | 'old' | 'special' = 'new';
         const result: DrawResult = {
           drawNumber,
           drawDate,
-          format,
+          format: 'new',
           mainNumbers,
         };
-
-        // Check for additional prize numbers
-        const bonusSection = $container.find('.bonus-numbers');
-        
-        if (bonusSection.length) {
-          format = 'special';
-          
-          // Extract Lakshapathi numbers
-          const lakshapathiDiv = bonusSection.find('.lakshapathi');
-          if (lakshapathiDiv.length) {
-            const lakshapathiNumbers: string[] = [];
-            lakshapathiDiv.find('.number').each((_, el) => {
-              lakshapathiNumbers.push($(el).text().trim());
-            });
-            result.lakshapathiNumbers = { numbers: lakshapathiNumbers };
-          }
-
-          // Extract Millionaire numbers
-          const millionaireDiv = bonusSection.find('.millionaire');
-          if (millionaireDiv.length) {
-            const millionaireNumbers: string[] = [];
-            millionaireDiv.find('.number').each((_, el) => {
-              millionaireNumbers.push($(el).text().trim());
-            });
-            result.millionaireNumbers = { numbers: millionaireNumbers };
-          }
-
-          // Extract 500K numbers
-          const fiveHundredKDiv = bonusSection.find('.five-hundred-k');
-          if (fiveHundredKDiv.length) {
-            const fiveHundredKNumbers: string[] = [];
-            fiveHundredKDiv.find('.number').each((_, el) => {
-              fiveHundredKNumbers.push($(el).text().trim());
-            });
-            result.fiveHundredKNumbers = { numbers: fiveHundredKNumbers };
-          }
-        }
 
         results.push(result);
         console.log(`Successfully processed draw ${drawNumber}`);
       } catch (error) {
-        console.error('Error processing container:', error);
+        console.error('Error processing row:', error);
       }
     });
 
