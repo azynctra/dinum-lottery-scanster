@@ -1,3 +1,4 @@
+import FirecrawlApp from 'npm:@mendable/firecrawl-js';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 
@@ -40,25 +41,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Starting to scrape Mega Power results...');
+    console.log('Starting to scrape Mega Power results using Firecrawl...');
     
-    const response = await fetch('https://www.nlb.lk/results/mega-power', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!firecrawlApiKey) {
+      throw new Error('Firecrawl API key not configured');
+    }
+
+    console.log('Initializing Firecrawl with API key');
+    const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey });
+
+    console.log('Starting crawl for NLB Mega Power URL');
+    const crawlResponse = await firecrawl.crawlUrl('https://www.nlb.lk/results/mega-power', {
+      limit: 1,
+      scrapeOptions: {
+        formats: ['html']
       }
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    if (!crawlResponse.success) {
+      throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
-    
-    const html = await response.text();
-    console.log('Successfully fetched HTML content');
-    
+
+    const html = crawlResponse.data?.[0]?.html;
+    if (!html) {
+      console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
+      throw new Error('No HTML content found in crawl response');
+    }
+
+    console.log('Successfully retrieved HTML content, parsing results...');
     const $ = cheerio.load(html);
     const results: DrawResult[] = [];
 
