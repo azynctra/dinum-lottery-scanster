@@ -1,4 +1,3 @@
-import FirecrawlApp from 'npm:@mendable/firecrawl-js';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 
@@ -33,19 +32,30 @@ Deno.serve(async (req) => {
       throw new Error('Firecrawl API key not configured');
     }
 
-    const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey });
-    
-    console.log('Initialized Firecrawl, starting crawl...');
-    const crawlResponse = await firecrawl.crawlUrl('https://www.nlb.lk/results/mega-power', {
-      limit: 1,
-      scrapeOptions: {
-        formats: ['html'],
-        timeout: 30000
-      }
+    // Make direct request to Firecrawl API
+    console.log('Making request to Firecrawl API...');
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify({
+        url: 'https://www.nlb.lk/results/mega-power',
+        formats: ['html']
+      })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Firecrawl API error:', errorText);
+      throw new Error(`Firecrawl API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const crawlResponse = await response.json();
+    console.log('Firecrawl API response:', crawlResponse);
+
     if (!crawlResponse.success) {
-      console.error('Crawl failed:', crawlResponse);
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
