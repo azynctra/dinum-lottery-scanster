@@ -19,6 +19,65 @@ interface DrawResult {
   mainNumbers: LotteryNumbers;
 }
 
+async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
+  const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!firecrawlApiKey) {
+    throw new Error('Firecrawl API key not configured');
+  }
+
+  const requestOptions = {
+    url: 'https://www.nlb.lk/results/mega-power',
+    formats: ['html'],
+    wait: 8000,
+    javascript: true,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    headers: {
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    proxy: {
+      enabled: true,
+      country: 'US'
+    },
+    blockAds: true,
+    blockTrackers: true
+  };
+
+  try {
+    console.log(`Making Firecrawl request (attempt ${retryCount + 1}):`, JSON.stringify(requestOptions, null, 2));
+    
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify(requestOptions)
+    });
+
+    console.log('Firecrawl response status:', response.status);
+    console.log('Firecrawl response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok && retryCount < 2) {
+      console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+      return makeFirecrawlRequest(retryCount + 1);
+    }
+
+    return response;
+  } catch (error) {
+    console.error(`Request attempt ${retryCount + 1} failed:`, error);
+    if (retryCount < 2) {
+      console.log('Retrying...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return makeFirecrawlRequest(retryCount + 1);
+    }
+    throw error;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -27,37 +86,9 @@ Deno.serve(async (req) => {
   try {
     console.log('Starting to scrape Mega Power results...');
     
-    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!firecrawlApiKey) {
-      throw new Error('Firecrawl API key not configured');
-    }
-
-    console.log('Making request to Firecrawl API...');
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-      },
-      body: JSON.stringify({
-        url: 'https://www.nlb.lk/results/mega-power',
-        formats: ['html'],
-        wait: 5000,
-        javascript: true,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        proxy: {
-          enabled: true
-        }
-      })
-    });
-
-    console.log('Firecrawl API response status:', response.status);
+    const response = await makeFirecrawlRequest();
     const responseText = await response.text();
-    console.log('Firecrawl API raw response:', responseText);
+    console.log('Raw Firecrawl response:', responseText);
 
     let crawlResponse;
     try {
