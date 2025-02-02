@@ -59,9 +59,10 @@ Deno.serve(async (req) => {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
+    // Extract the HTML content from the crawl response
     const html = crawlResponse.data?.[0]?.html;
     if (!html) {
-      console.error('No HTML content found:', crawlResponse);
+      console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
       throw new Error('No HTML content found in crawl response');
     }
 
