@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       throw new Error('Firecrawl API key not configured');
     }
 
-    // Make direct request to Firecrawl API
+    // Make direct request to Firecrawl API with detailed logging
     console.log('Making request to Firecrawl API...');
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -46,23 +46,29 @@ Deno.serve(async (req) => {
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Firecrawl API error:', errorText);
-      throw new Error(`Firecrawl API request failed: ${response.status} ${response.statusText}`);
+    console.log('Firecrawl API response status:', response.status);
+    const responseText = await response.text();
+    console.log('Firecrawl API raw response:', responseText);
+
+    let crawlResponse;
+    try {
+      crawlResponse = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Error parsing JSON response:', error);
+      throw new Error('Invalid JSON response from Firecrawl API');
     }
 
-    const crawlResponse = await response.json();
-    console.log('Firecrawl API response:', crawlResponse);
+    console.log('Parsed Firecrawl response:', JSON.stringify(crawlResponse, null, 2));
 
     if (!crawlResponse.success) {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
-    // Extract the HTML content from the crawl response
+    // Extract and validate HTML content
     const html = crawlResponse.data?.[0]?.html;
     if (!html) {
       console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
+      console.error('Data array:', JSON.stringify(crawlResponse.data, null, 2));
       throw new Error('No HTML content found in crawl response');
     }
 
@@ -200,7 +206,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        stack: error.stack
       }),
       { 
         status: 500,
