@@ -32,7 +32,6 @@ Deno.serve(async (req) => {
       throw new Error('Firecrawl API key not configured');
     }
 
-    // Make direct request to Firecrawl API with detailed logging
     console.log('Making request to Firecrawl API...');
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -42,7 +41,9 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: 'https://www.nlb.lk/results/mega-power',
-        formats: ['html']
+        formats: ['html'],
+        wait: 5000, // Wait for dynamic content to load
+        javascript: true // Enable JavaScript execution
       })
     });
 
@@ -53,22 +54,25 @@ Deno.serve(async (req) => {
     let crawlResponse;
     try {
       crawlResponse = JSON.parse(responseText);
+      console.log('Parsed Firecrawl response:', JSON.stringify(crawlResponse, null, 2));
     } catch (error) {
       console.error('Error parsing JSON response:', error);
       throw new Error('Invalid JSON response from Firecrawl API');
     }
 
-    console.log('Parsed Firecrawl response:', JSON.stringify(crawlResponse, null, 2));
-
     if (!crawlResponse.success) {
+      console.error('Crawl failed:', crawlResponse.error || 'Unknown error');
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
     // Extract and validate HTML content
-    const html = crawlResponse.data?.[0]?.html;
+    const html = crawlResponse.data?.[0]?.html || crawlResponse.html;
     if (!html) {
       console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
-      console.error('Data array:', JSON.stringify(crawlResponse.data, null, 2));
+      console.error('Data structure:', crawlResponse.data ? 'Has data array' : 'No data array');
+      if (crawlResponse.data) {
+        console.error('First data item:', crawlResponse.data[0]);
+      }
       throw new Error('No HTML content found in crawl response');
     }
 
@@ -207,7 +211,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: false, 
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500,
