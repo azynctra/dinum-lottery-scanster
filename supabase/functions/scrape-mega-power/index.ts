@@ -28,25 +28,35 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
   const requestOptions = {
     url: 'https://www.nlb.lk/results/mega-power',
     formats: ['html'],
-    wait: 8000,
+    wait: 12000, // Increased wait time
     javascript: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     headers: {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
       'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
+      'Pragma': 'no-cache',
+      'Upgrade-Insecure-Requests': '1'
     },
     proxy: {
       enabled: true,
       country: 'US'
     },
     blockAds: true,
-    blockTrackers: true
+    blockTrackers: true,
+    followRedirects: true,
+    maxRedirects: 5
   };
 
   try {
     console.log(`Making Firecrawl request (attempt ${retryCount + 1}):`, JSON.stringify(requestOptions, null, 2));
+    
+    // Exponential backoff for retries
+    if (retryCount > 0) {
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+      console.log(`Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
     
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -60,18 +70,23 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
     console.log('Firecrawl response status:', response.status);
     console.log('Firecrawl response headers:', Object.fromEntries(response.headers.entries()));
 
-    if (!response.ok && retryCount < 2) {
-      console.log(`Attempt ${retryCount + 1} failed, retrying...`);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
-      return makeFirecrawlRequest(retryCount + 1);
+    // Validate response status
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response body:', errorText);
+      
+      if (retryCount < 3) {
+        console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+        return makeFirecrawlRequest(retryCount + 1);
+      }
+      
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
 
     return response;
   } catch (error) {
     console.error(`Request attempt ${retryCount + 1} failed:`, error);
-    if (retryCount < 2) {
-      console.log('Retrying...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    if (retryCount < 3) {
       return makeFirecrawlRequest(retryCount + 1);
     }
     throw error;
