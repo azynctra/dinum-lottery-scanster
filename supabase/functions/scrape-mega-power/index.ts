@@ -27,7 +27,7 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
 
   const requestOptions = {
     url: 'https://www.nlb.lk/results/mega-power',
-    formats: ['html'],
+    formats: ['markdown'],
     headers: {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
