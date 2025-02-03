@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +26,7 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
 
   const requestOptions = {
     url: 'https://www.nlb.lk/results/mega-power',
-    formats: ['html']
+    formats: ['markdown']
   };
 
   try {
@@ -49,8 +48,7 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
     });
 
     console.log('Firecrawl response status:', response.status);
-    console.log('Firecrawl response headers:', Object.fromEntries(response.headers.entries()));
-
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Error response body:', errorText);
@@ -73,6 +71,56 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
   }
 }
 
+function parseMarkdownTable(markdown: string): DrawResult[] {
+  const results: DrawResult[] = [];
+  
+  // Split the markdown into lines
+  const lines = markdown.split('\n');
+  
+  // Find the table start (after headers)
+  const tableStartIndex = lines.findIndex(line => line.includes('| Draw/Date |'));
+  if (tableStartIndex === -1) return results;
+  
+  // Skip the header and separator lines
+  const dataLines = lines.slice(tableStartIndex + 2);
+  
+  for (const line of dataLines) {
+    if (!line.trim() || !line.startsWith('|')) continue;
+    
+    const [drawDateCell, resultsCell] = line.split('|').slice(1, 3).map(cell => cell.trim());
+    if (!drawDateCell || !resultsCell) continue;
+    
+    // Parse draw number and date
+    const drawMatch = drawDateCell.match(/\*\*(\d+)\*\*/);
+    const dateMatch = drawDateCell.match(/<br>(.*)/);
+    if (!drawMatch || !dateMatch) continue;
+    
+    const drawNumber = drawMatch[1];
+    const drawDate = dateMatch[1];
+    
+    // Parse lottery numbers
+    const numberLines = resultsCell.split('<br>');
+    if (numberLines.length < 6) continue;
+    
+    const letter = numberLines[0].split('. ')[1];
+    const superNumber = numberLines[1].split('. ')[1];
+    const numbers = numberLines.slice(2, 6).map(line => line.split('. ')[1]);
+    
+    results.push({
+      drawNumber,
+      drawDate,
+      format: 'new',
+      mainNumbers: {
+        letter,
+        superNumber,
+        numbers
+      }
+    });
+  }
+  
+  return results;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -82,79 +130,16 @@ Deno.serve(async (req) => {
     console.log('Starting to scrape Mega Power results...');
     
     const response = await makeFirecrawlRequest();
-    const responseText = await response.text();
-    console.log('Raw Firecrawl response:', responseText);
+    const responseData = await response.json();
+    console.log('Firecrawl response:', JSON.stringify(responseData, null, 2));
 
-    let crawlResponse;
-    try {
-      crawlResponse = JSON.parse(responseText);
-      console.log('Parsed Firecrawl response:', JSON.stringify(crawlResponse, null, 2));
-    } catch (error) {
-      console.error('Error parsing JSON response:', error);
-      throw new Error('Invalid JSON response from Firecrawl API');
+    if (!responseData.success || !responseData.data?.markdown) {
+      console.error('Invalid response format or missing markdown content');
+      throw new Error('Failed to get markdown content from Firecrawl API');
     }
 
-    if (!crawlResponse.success) {
-      console.error('Crawl failed:', crawlResponse.error || 'Unknown error');
-      throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
-    }
-
-    const html = crawlResponse.data?.html;
-    if (!html) {
-      console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
-      throw new Error('No HTML content found in crawl response');
-    }
-
-    console.log('Successfully retrieved HTML. Loading with Cheerio...');
-    const $ = cheerio.load(html);
-    
-    const results: DrawResult[] = [];
-    
-    $('table.tbl tbody tr').each((_, row) => {
-      try {
-        const $row = $(row);
-        const drawInfo = $row.find('td:first-child').text().trim();
-        const drawMatch = drawInfo.match(/(\d+)/);
-        const dateMatch = drawInfo.match(/(\w+)\s+(\w+)\s+(\d+),\s+(\d+)/);
-        
-        if (!drawMatch || !dateMatch) {
-          console.log('Could not extract draw number or date from:', drawInfo);
-          return;
-        }
-
-        const drawNumber = drawMatch[1];
-        const [_, dayOfWeek, month, day, year] = dateMatch;
-        const drawDate = `${year}-${getMonthNumber(month)}-${day.padStart(2, '0')}`;
-
-        const $numbers = $row.find('ol.B li');
-        if ($numbers.length < 6) {
-          console.log(`Skipping row for draw ${drawNumber} - insufficient number elements`);
-          return;
-        }
-
-        const mainNumbers: LotteryNumbers = {
-          letter: $numbers.eq(0).text().trim(),
-          superNumber: $numbers.eq(1).text().trim(),
-          numbers: [
-            $numbers.eq(2).text().trim(),
-            $numbers.eq(3).text().trim(),
-            $numbers.eq(4).text().trim(),
-            $numbers.eq(5).text().trim(),
-          ]
-        };
-
-        results.push({
-          drawNumber,
-          drawDate,
-          format: 'new',
-          mainNumbers,
-        });
-      } catch (error) {
-        console.error('Error processing row:', error);
-      }
-    });
-
-    console.log(`Found ${results.length} results to process`);
+    const results = parseMarkdownTable(responseData.data.markdown);
+    console.log(`Parsed ${results.length} results from markdown`);
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -217,21 +202,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-function getMonthNumber(month: string): string {
-  const months: { [key: string]: string } = {
-    'January': '01',
-    'February': '02',
-    'March': '03',
-    'April': '04',
-    'May': '05',
-    'June': '06',
-    'July': '07',
-    'August': '08',
-    'September': '09',
-    'October': '10',
-    'November': '11',
-    'December': '12'
-  };
-  return months[month] || '01';
-}
