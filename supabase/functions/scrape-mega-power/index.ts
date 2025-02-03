@@ -11,70 +11,22 @@ interface LotteryNumbers {
   numbers: string[];
 }
 
+interface SpecialNumbers {
+  millionaire?: string[];
+  fiveHundredK?: string[];
+  lakshapathi?: string[];
+}
+
 interface DrawResult {
   drawNumber: string;
   drawDate: string;
   format: 'new' | 'old' | 'special';
   mainNumbers: LotteryNumbers;
-}
-
-async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
-  const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-  if (!firecrawlApiKey) {
-    throw new Error('Firecrawl API key not configured');
-  }
-
-  const requestOptions = {
-    url: 'https://www.nlb.lk/results/mega-power',
-    formats: ['markdown']
-  };
-
-  try {
-    console.log(`Making Firecrawl request (attempt ${retryCount + 1}):`, JSON.stringify(requestOptions, null, 2));
-    
-    if (retryCount > 0) {
-      const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
-      console.log(`Waiting ${delay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-    
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-      },
-      body: JSON.stringify(requestOptions)
-    });
-
-    console.log('Firecrawl response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response body:', errorText);
-      
-      if (retryCount < 3) {
-        console.log(`Attempt ${retryCount + 1} failed, retrying...`);
-        return makeFirecrawlRequest(retryCount + 1);
-      }
-      
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error(`Request attempt ${retryCount + 1} failed:`, error);
-    if (retryCount < 3) {
-      return makeFirecrawlRequest(retryCount + 1);
-    }
-    throw error;
-  }
+  specialNumbers?: SpecialNumbers;
 }
 
 function parseMarkdownTable(markdown: string): DrawResult[] {
   const results: DrawResult[] = [];
-  
-  // Split the markdown into lines
   const lines = markdown.split('\n');
   
   // Find the table start (after headers)
@@ -102,23 +54,148 @@ function parseMarkdownTable(markdown: string): DrawResult[] {
     const numberLines = resultsCell.split('<br>');
     if (numberLines.length < 6) continue;
     
+    // Main numbers
     const letter = numberLines[0].split('. ')[1];
     const superNumber = numberLines[1].split('. ')[1];
     const numbers = numberLines.slice(2, 6).map(line => line.split('. ')[1]);
+
+    // Special numbers
+    const specialNumbers: SpecialNumbers = {};
+    
+    // Find Millionaire numbers
+    const millionaireIndex = numberLines.findIndex(line => line.includes('Millionaire Lucky Number'));
+    if (millionaireIndex !== -1) {
+      specialNumbers.millionaire = numberLines
+        .slice(millionaireIndex + 1, millionaireIndex + 7)
+        .map(line => line.split('. ')[1]);
+    }
+
+    // Find 500,000 numbers
+    const fiveHundredKIndex = numberLines.findIndex(line => line.includes('500,000/= Lucky Number'));
+    if (fiveHundredKIndex !== -1) {
+      specialNumbers.fiveHundredK = numberLines
+        .slice(fiveHundredKIndex + 1, fiveHundredKIndex + 7)
+        .map(line => line.split('. ')[1]);
+    }
+
+    // Find Lakshapathi numbers
+    const lakshapathiIndex = numberLines.findIndex(line => line.includes('Lakshapathi Double Chance No'));
+    if (lakshapathiIndex !== -1) {
+      const remainingLines = numberLines.slice(lakshapathiIndex + 1);
+      const lakshapathiNumbers = [];
+      for (const line of remainingLines) {
+        if (line.includes('Lucky Number')) break;
+        if (!line.includes('. ')) break;
+        lakshapathiNumbers.push(line.split('. ')[1]);
+      }
+      specialNumbers.lakshapathi = lakshapathiNumbers;
+    }
     
     results.push({
       drawNumber,
       drawDate,
-      format: 'new',
+      format: Object.keys(specialNumbers).length > 0 ? 'special' : 'new',
       mainNumbers: {
         letter,
         superNumber,
         numbers
-      }
+      },
+      specialNumbers
     });
   }
   
   return results;
+}
+
+async function storeResults(supabaseClient: any, result: DrawResult) {
+  console.log(`Processing draw ${result.drawNumber}`);
+  
+  try {
+    // Store main results
+    const { data: mainResult, error: mainError } = await supabaseClient
+      .from('mega_power_results')
+      .upsert({
+        draw_number: result.drawNumber,
+        draw_date: result.drawDate,
+        letter: result.mainNumbers.letter,
+        super_number: result.mainNumbers.superNumber,
+        number1: result.mainNumbers.numbers[0],
+        number2: result.mainNumbers.numbers[1],
+        number3: result.mainNumbers.numbers[2],
+        number4: result.mainNumbers.numbers[3],
+        format: result.format
+      }, {
+        onConflict: 'draw_number'
+      })
+      .select()
+      .single();
+
+    if (mainError) throw mainError;
+
+    // If there are special numbers, store them
+    if (result.specialNumbers) {
+      const drawId = mainResult.id;
+
+      if (result.specialNumbers.millionaire) {
+        const { error: millionaireError } = await supabaseClient
+          .from('mega_power_millionaire')
+          .upsert({
+            draw_id: drawId,
+            number1: result.specialNumbers.millionaire[0],
+            number2: result.specialNumbers.millionaire[1],
+            number3: result.specialNumbers.millionaire[2],
+            number4: result.specialNumbers.millionaire[3],
+            number5: result.specialNumbers.millionaire[4],
+            number6: result.specialNumbers.millionaire[5]
+          }, {
+            onConflict: 'draw_id'
+          });
+
+        if (millionaireError) console.error('Error storing millionaire numbers:', millionaireError);
+      }
+
+      if (result.specialNumbers.fiveHundredK) {
+        const { error: fiveHundredKError } = await supabaseClient
+          .from('mega_power_500k')
+          .upsert({
+            draw_id: drawId,
+            number1: result.specialNumbers.fiveHundredK[0],
+            number2: result.specialNumbers.fiveHundredK[1],
+            number3: result.specialNumbers.fiveHundredK[2],
+            number4: result.specialNumbers.fiveHundredK[3],
+            number5: result.specialNumbers.fiveHundredK[4],
+            number6: result.specialNumbers.fiveHundredK[5]
+          }, {
+            onConflict: 'draw_id'
+          });
+
+        if (fiveHundredKError) console.error('Error storing 500k numbers:', fiveHundredKError);
+      }
+
+      if (result.specialNumbers.lakshapathi) {
+        const { error: lakshapathiError } = await supabaseClient
+          .from('mega_power_lakshapathi')
+          .upsert({
+            draw_id: drawId,
+            number1: result.specialNumbers.lakshapathi[0],
+            number2: result.specialNumbers.lakshapathi[1],
+            number3: result.specialNumbers.lakshapathi[2],
+            number4: result.specialNumbers.lakshapathi[3],
+            number5: result.specialNumbers.lakshapathi[4],
+            number6: result.specialNumbers.lakshapathi[5] || null
+          }, {
+            onConflict: 'draw_id'
+          });
+
+        if (lakshapathiError) console.error('Error storing lakshapathi numbers:', lakshapathiError);
+      }
+    }
+
+    console.log(`Successfully stored result for draw ${result.drawNumber}`);
+  } catch (error) {
+    console.error(`Error processing draw ${result.drawNumber}:`, error);
+    throw error;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -129,13 +206,35 @@ Deno.serve(async (req) => {
   try {
     console.log('Starting to scrape Mega Power results...');
     
-    const response = await makeFirecrawlRequest();
+    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!firecrawlApiKey) {
+      throw new Error('Firecrawl API key not configured');
+    }
+
+    const requestOptions = {
+      url: 'https://www.nlb.lk/results/mega-power',
+      formats: ['markdown']
+    };
+
+    console.log('Making request to Firecrawl API');
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify(requestOptions)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const responseData = await response.json();
     console.log('Firecrawl response:', JSON.stringify(responseData, null, 2));
 
     if (!responseData.success || !responseData.data?.markdown) {
-      console.error('Invalid response format or missing markdown content');
-      throw new Error('Failed to get markdown content from Firecrawl API');
+      throw new Error('No markdown content found in crawl response');
     }
 
     const results = parseMarkdownTable(responseData.data.markdown);
@@ -147,34 +246,7 @@ Deno.serve(async (req) => {
     );
 
     for (const result of results) {
-      try {
-        console.log(`Storing result for draw ${result.drawNumber}`);
-        
-        const { error: mainError } = await supabaseClient
-          .from('mega_power_results')
-          .upsert({
-            draw_number: result.drawNumber,
-            draw_date: result.drawDate,
-            letter: result.mainNumbers.letter,
-            super_number: result.mainNumbers.superNumber,
-            number1: result.mainNumbers.numbers[0],
-            number2: result.mainNumbers.numbers[1],
-            number3: result.mainNumbers.numbers[2],
-            number4: result.mainNumbers.numbers[3],
-            format: result.format
-          }, {
-            onConflict: 'draw_number'
-          });
-
-        if (mainError) {
-          console.error('Error storing main result:', mainError);
-          throw mainError;
-        }
-
-        console.log(`Successfully stored result for draw ${result.drawNumber}`);
-      } catch (error) {
-        console.error(`Error processing draw ${result.drawNumber}:`, error);
-      }
+      await storeResults(supabaseClient, result);
     }
 
     return new Response(
