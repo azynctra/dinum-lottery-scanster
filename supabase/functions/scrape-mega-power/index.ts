@@ -38,7 +38,6 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
   try {
     console.log(`Making Firecrawl request (attempt ${retryCount + 1}):`, JSON.stringify(requestOptions, null, 2));
     
-    // Exponential backoff for retries
     if (retryCount > 0) {
       const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
       console.log(`Waiting ${delay}ms before retry...`);
@@ -57,7 +56,6 @@ async function makeFirecrawlRequest(retryCount = 0): Promise<Response> {
     console.log('Firecrawl response status:', response.status);
     console.log('Firecrawl response headers:', Object.fromEntries(response.headers.entries()));
 
-    // Validate response status
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Error response body:', errorText);
@@ -106,14 +104,10 @@ Deno.serve(async (req) => {
       throw new Error('Failed to crawl URL: ' + (crawlResponse.error || 'Unknown error'));
     }
 
-    // Extract and validate HTML content
-    const html = crawlResponse.data?.[0]?.html || crawlResponse.html;
+    // Extract HTML content from the correct path in the response
+    const html = crawlResponse.data?.html;
     if (!html) {
       console.error('Full crawl response:', JSON.stringify(crawlResponse, null, 2));
-      console.error('Data structure:', crawlResponse.data ? 'Has data array' : 'No data array');
-      if (crawlResponse.data) {
-        console.error('First data item:', crawlResponse.data[0]);
-      }
       throw new Error('No HTML content found in crawl response');
     }
 
@@ -245,7 +239,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
-
   } catch (error) {
     console.error('Error:', error);
     return new Response(
