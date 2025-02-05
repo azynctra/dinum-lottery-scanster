@@ -8,7 +8,8 @@ interface MegaPowerTicket {
 }
 
 export const parseMegaPowerTicket = (qrText: string): MegaPowerTicket | null => {
-  // Match pattern: Mega Power {drawId} {letter} {numbers...}
+  // Match pattern: Mega Power {drawId} {letter} {numbers...} {date} {serialNumber} {url}
+  // Example: Mega Power 2060 G 10 53 74 75 79 2025/01/10 083020600366707 https://r.nlb.lk/083020600366707G1053747579
   const match = qrText.match(/Mega Power (\d+) ([A-Z]) (\d+) (\d+) (\d+) (\d+) (\d+)/);
   if (!match) return null;
 
@@ -63,7 +64,9 @@ export const compareMegaPowerTicket = (ticket: MegaPowerTicket, result: any) => 
   const matches = {
     letter: ticket.letter === result.mainResult.letter,
     numbers: ticket.numbers.every((num, index) => {
-      const resultNum = result.mainResult[`number${index + 1}`];
+      // Match against the corresponding number fields
+      if (index === 0) return num === result.mainResult.super_number;
+      const resultNum = result.mainResult[`number${index}`];
       return num === resultNum;
     }),
     matchingSpecials: [] as string[]
