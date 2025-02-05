@@ -28,7 +28,7 @@ export const fetchMegaPowerResult = async (drawId: string) => {
     .from('mega_power_results')
     .select('*')
     .eq('draw_number', drawId)
-    .single();
+    .maybeSingle();
 
   if (mainError) throw new Error('Failed to fetch lottery result');
   if (!mainResult) throw new Error('No result found for this draw');
@@ -43,7 +43,7 @@ export const fetchMegaPowerResult = async (drawId: string) => {
   if (specialTypesData) {
     for (const { table_name } of specialTypesData) {
       const { data } = await supabase
-        .from(table_name)
+        .from(table_name as 'mega_power_500k' | 'mega_power_lakshapathi' | 'mega_power_millionaire')
         .select('*')
         .eq('draw_id', drawId);
       

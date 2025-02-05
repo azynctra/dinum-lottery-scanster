@@ -13,7 +13,6 @@ interface QRScannerProps {
 
 const QRScanner = ({ onClose }: QRScannerProps) => {
   const { toast } = useToast();
-  const [url, setUrl] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(true);
   const [scrapedContent, setScrapedContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,13 +58,13 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         const comparison = compareMegaPowerTicket(ticket, result);
         setMatchResult(comparison);
 
-        // Also fetch the webpage content for additional information
-        const urlMatch = result.match(/(https?:\/\/[^\s]+)/);
-        if (urlMatch) {
-          const extractedUrl = urlMatch[0];
-          setUrl(extractedUrl);
-          const content = await scrapeLotteryResult(extractedUrl);
+        // Try to scrape the webpage content
+        try {
+          const content = await scrapeLotteryResult(`https://www.nlb.lk/results/mega-power/${ticket.drawId}`);
           setScrapedContent(content);
+        } catch (error) {
+          console.error('Error scraping content:', error);
+          // Don't throw here, we still want to show the results
         }
 
         toast({
@@ -94,7 +93,6 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
   }, [showScanner]);
 
   const handleClose = () => {
-    setUrl(null);
     setShowScanner(true);
     setScrapedContent(null);
     setTicketData(null);
@@ -105,7 +103,6 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
 
   const handleRetry = () => {
     setShowScanner(true);
-    setUrl(null);
     setScrapedContent(null);
     setTicketData(null);
     setResultData(null);
