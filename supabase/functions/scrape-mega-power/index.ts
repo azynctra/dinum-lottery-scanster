@@ -115,6 +115,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
     const { data: mainResult, error: mainError } = await supabaseClient
       .from('mega_power_results')
       .upsert({
+        id: result.drawNumber, // Use draw number as primary key
         draw_number: result.drawNumber,
         draw_date: result.drawDate,
         letter: result.mainNumbers.letter,
@@ -125,7 +126,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
         number4: result.mainNumbers.numbers[3],
         format: result.format
       }, {
-        onConflict: 'draw_number'
+        onConflict: 'id'
       })
       .select()
       .single();
@@ -134,13 +135,15 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
 
     // If there are special numbers, store them
     if (result.specialNumbers) {
-      const drawId = mainResult.id;
+      const drawId = result.drawNumber; // Use draw number as the reference
 
       if (result.specialNumbers.millionaire) {
+        console.log('Storing millionaire numbers for draw:', drawId);
         const { error: millionaireError } = await supabaseClient
           .from('mega_power_millionaire')
           .upsert({
-            draw_id: drawId,
+            id: drawId,
+            draw_id: mainResult.id,
             number1: result.specialNumbers.millionaire[0],
             number2: result.specialNumbers.millionaire[1],
             number3: result.specialNumbers.millionaire[2],
@@ -148,17 +151,19 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
             number5: result.specialNumbers.millionaire[4],
             number6: result.specialNumbers.millionaire[5]
           }, {
-            onConflict: 'draw_id'
+            onConflict: 'id'
           });
 
         if (millionaireError) console.error('Error storing millionaire numbers:', millionaireError);
       }
 
       if (result.specialNumbers.fiveHundredK) {
+        console.log('Storing 500k numbers for draw:', drawId);
         const { error: fiveHundredKError } = await supabaseClient
           .from('mega_power_500k')
           .upsert({
-            draw_id: drawId,
+            id: drawId,
+            draw_id: mainResult.id,
             number1: result.specialNumbers.fiveHundredK[0],
             number2: result.specialNumbers.fiveHundredK[1],
             number3: result.specialNumbers.fiveHundredK[2],
@@ -166,17 +171,19 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
             number5: result.specialNumbers.fiveHundredK[4],
             number6: result.specialNumbers.fiveHundredK[5]
           }, {
-            onConflict: 'draw_id'
+            onConflict: 'id'
           });
 
         if (fiveHundredKError) console.error('Error storing 500k numbers:', fiveHundredKError);
       }
 
       if (result.specialNumbers.lakshapathi) {
+        console.log('Storing lakshapathi numbers for draw:', drawId);
         const { error: lakshapathiError } = await supabaseClient
           .from('mega_power_lakshapathi')
           .upsert({
-            draw_id: drawId,
+            id: drawId,
+            draw_id: mainResult.id,
             number1: result.specialNumbers.lakshapathi[0],
             number2: result.specialNumbers.lakshapathi[1],
             number3: result.specialNumbers.lakshapathi[2],
@@ -184,7 +191,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
             number5: result.specialNumbers.lakshapathi[4],
             number6: result.specialNumbers.lakshapathi[5] || null
           }, {
-            onConflict: 'draw_id'
+            onConflict: 'id'
           });
 
         if (lakshapathiError) console.error('Error storing lakshapathi numbers:', lakshapathiError);
