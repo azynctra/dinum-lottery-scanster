@@ -64,22 +64,7 @@ export type Database = {
           number5?: string
           number6?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "mega_power_500k_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_complete_results"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mega_power_500k_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_results"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mega_power_lakshapathi: {
         Row: {
@@ -115,22 +100,7 @@ export type Database = {
           number5?: string
           number6?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mega_power_lakshapathi_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_complete_results"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mega_power_lakshapathi_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_results"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mega_power_millionaire: {
         Row: {
@@ -166,22 +136,7 @@ export type Database = {
           number5?: string
           number6?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "mega_power_millionaire_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_complete_results"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mega_power_millionaire_draw_id_fkey"
-            columns: ["draw_id"]
-            isOneToOne: false
-            referencedRelation: "mega_power_results"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mega_power_results: {
         Row: {
