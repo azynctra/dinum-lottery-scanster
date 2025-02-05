@@ -111,11 +111,10 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
   console.log(`Processing draw ${result.drawNumber}`);
   
   try {
-    // Store main results
+    // Store main results with draw_number as the primary key
     const { data: mainResult, error: mainError } = await supabaseClient
       .from('mega_power_results')
       .upsert({
-        id: result.drawNumber, // Use draw number as primary key
         draw_number: result.drawNumber,
         draw_date: result.drawDate,
         letter: result.mainNumbers.letter,
@@ -126,16 +125,17 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
         number4: result.mainNumbers.numbers[3],
         format: result.format
       }, {
-        onConflict: 'id'
+        onConflict: 'draw_number'
       })
       .select()
       .single();
 
     if (mainError) throw mainError;
+    console.log('Stored main result:', mainResult);
 
     // If there are special numbers, store them
     if (result.specialNumbers) {
-      const drawId = result.drawNumber; // Use draw number as the reference
+      const drawId = result.drawNumber;
 
       if (result.specialNumbers.millionaire) {
         console.log('Storing millionaire numbers for draw:', drawId);
@@ -143,7 +143,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
           .from('mega_power_millionaire')
           .upsert({
             id: drawId,
-            draw_id: mainResult.id,
+            draw_id: drawId,
             number1: result.specialNumbers.millionaire[0],
             number2: result.specialNumbers.millionaire[1],
             number3: result.specialNumbers.millionaire[2],
@@ -163,7 +163,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
           .from('mega_power_500k')
           .upsert({
             id: drawId,
-            draw_id: mainResult.id,
+            draw_id: drawId,
             number1: result.specialNumbers.fiveHundredK[0],
             number2: result.specialNumbers.fiveHundredK[1],
             number3: result.specialNumbers.fiveHundredK[2],
@@ -183,7 +183,7 @@ async function storeResults(supabaseClient: any, result: DrawResult) {
           .from('mega_power_lakshapathi')
           .upsert({
             id: drawId,
-            draw_id: mainResult.id,
+            draw_id: drawId,
             number1: result.specialNumbers.lakshapathi[0],
             number2: result.specialNumbers.lakshapathi[1],
             number3: result.specialNumbers.lakshapathi[2],

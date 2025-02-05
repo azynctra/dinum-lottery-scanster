@@ -64,7 +64,22 @@ export type Database = {
           number5?: string
           number6?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mega_power_500k_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_complete_results"
+            referencedColumns: ["draw_number"]
+          },
+          {
+            foreignKeyName: "mega_power_500k_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_results"
+            referencedColumns: ["draw_number"]
+          },
+        ]
       }
       mega_power_lakshapathi: {
         Row: {
@@ -100,7 +115,22 @@ export type Database = {
           number5?: string
           number6?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mega_power_lakshapathi_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_complete_results"
+            referencedColumns: ["draw_number"]
+          },
+          {
+            foreignKeyName: "mega_power_lakshapathi_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_results"
+            referencedColumns: ["draw_number"]
+          },
+        ]
       }
       mega_power_millionaire: {
         Row: {
@@ -136,7 +166,22 @@ export type Database = {
           number5?: string
           number6?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mega_power_millionaire_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_complete_results"
+            referencedColumns: ["draw_number"]
+          },
+          {
+            foreignKeyName: "mega_power_millionaire_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "mega_power_results"
+            referencedColumns: ["draw_number"]
+          },
+        ]
       }
       mega_power_results: {
         Row: {
@@ -197,7 +242,6 @@ export type Database = {
           five_hundred_k_number5: string | null
           five_hundred_k_number6: string | null
           format: Database["public"]["Enums"]["mega_power_format"] | null
-          id: string | null
           lakshapathi_number1: string | null
           lakshapathi_number2: string | null
           lakshapathi_number3: string | null
