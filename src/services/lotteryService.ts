@@ -10,10 +10,19 @@ interface MegaPowerTicket {
 export const parseMegaPowerTicket = (qrText: string): MegaPowerTicket | null => {
   // Match pattern: Mega Power {drawId} {letter} {numbers...} {date} {serialNumber} {url}
   // Example: Mega Power 2060 G 10 53 74 75 79 2025/01/10 083020600366707 https://r.nlb.lk/083020600366707G1053747579
-  const match = qrText.match(/Mega Power (\d+) ([A-Z]) (\d+) (\d+) (\d+) (\d+) (\d+)/);
-  if (!match) return null;
+  console.log('Parsing QR text:', qrText); // Debug log
+  
+  // Updated regex to be more flexible with spaces and optional components
+  const match = qrText.trim().match(/^Mega Power\s+(\d+)\s+([A-Z])\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/i);
+  
+  if (!match) {
+    console.log('No match found for QR text'); // Debug log
+    return null;
+  }
 
+  console.log('Match found:', match); // Debug log
   const [_, drawId, letter, ...numbers] = match;
+  
   return {
     drawId,
     letter,
@@ -61,6 +70,9 @@ export const fetchMegaPowerResult = async (drawId: string) => {
 };
 
 export const compareMegaPowerTicket = (ticket: MegaPowerTicket, result: any) => {
+  console.log('Comparing ticket:', ticket); // Debug log
+  console.log('With result:', result); // Debug log
+
   const matches = {
     letter: ticket.letter === result.mainResult.letter,
     numbers: ticket.numbers.every((num, index) => {
@@ -89,6 +101,7 @@ export const compareMegaPowerTicket = (ticket: MegaPowerTicket, result: any) => 
     }
   });
 
+  console.log('Match results:', matches); // Debug log
   return matches;
 };
 
