@@ -228,6 +228,36 @@ export type Database = {
         }
         Relationships: []
       }
+      mega_power_special_types: {
+        Row: {
+          first_seen_date: string | null
+          is_active: boolean | null
+          last_seen_date: string | null
+          number_format: Database["public"]["Enums"]["mega_power_number_format"]
+          table_name: string
+          total_occurrences: number | null
+          type_name: string
+        }
+        Insert: {
+          first_seen_date?: string | null
+          is_active?: boolean | null
+          last_seen_date?: string | null
+          number_format: Database["public"]["Enums"]["mega_power_number_format"]
+          table_name: string
+          total_occurrences?: number | null
+          type_name: string
+        }
+        Update: {
+          first_seen_date?: string | null
+          is_active?: boolean | null
+          last_seen_date?: string | null
+          number_format?: Database["public"]["Enums"]["mega_power_number_format"]
+          table_name?: string
+          total_occurrences?: number | null
+          type_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       mega_power_complete_results: {
@@ -266,10 +296,31 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      create_special_table: {
+        Args: {
+          special_type: string
+          table_name: string
+          number_format: Database["public"]["Enums"]["mega_power_number_format"]
+        }
+        Returns: undefined
+      }
+      handle_special_type: {
+        Args: {
+          p_type_name: string
+          p_number_format: Database["public"]["Enums"]["mega_power_number_format"]
+        }
+        Returns: string
+      }
+      normalize_table_name: {
+        Args: {
+          input_text: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       mega_power_format: "new" | "old" | "special"
+      mega_power_number_format: "four" | "five" | "six" | "six_with_letter"
     }
     CompositeTypes: {
       [_ in never]: never
